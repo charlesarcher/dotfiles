@@ -1,0 +1,49 @@
+[user]
+	email = charles.j.archer@intel.com
+	name = Charles J Archer
+[http]
+        proxy = http://proxy.jf.intel.com:911
+[color]
+        diff = auto
+        status = auto
+        branch = auto
+        ui = auto
+[color "status"]
+        added = green
+        changed = red
+        untracked = magenta
+[core]
+        whitespace = trailing-space,space-before-tab,indent-with-tab
+        abbrev = 8
+[rerere]
+	enabled = false
+[diff]
+    tool = meld
+[difftool]
+    prompt = false
+[difftool "meld"]
+    cmd = /home/cjarcher/tools/x86/bin/meld "$LOCAL" "$REMOTE"
+
+[merge]
+    tool = meld
+[mergetool "meld"]
+#           cmd = /usr/bin/meld "$LOCAL" "$MERGED" "$REMOTE" --output "$MERGED"
+           cmd = /usr/bin/meld  "$LOCAL" "$BASE" "$REMOTE" --output "$MERGED"
+
+[alias]
+    graph = log --graph --decorate --abbrev-commit --pretty=oneline
+	lg    = log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%C(bold blue)<%an>%Creset' --abbrev-commit
+    fixws =!"\
+    if (! git diff-index --quiet --cached HEAD); then \
+    \
+    git diff-files --quiet `git rev-parse --show-toplevel` ; \
+    export NEED_TO_STASH=$? ; \
+    \
+    git commit -m FIXWS_SAVE_INDEX && \
+    if [ 1 = $NEED_TO_STASH ] ; then git stash save FIXWS_SAVE_TREE; fi && \
+    git rebase --whitespace=fix HEAD~ && \
+    git reset --soft HEAD~ && \
+    if [ 1 = $NEED_TO_STASH ] ; then git stash pop; fi ; \
+  fi"
+[hub]
+	host = github.intel.com

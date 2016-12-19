@@ -1,0 +1,536 @@
+;;;;---------------------------------------------------------------------------
+;; .emacs configuration file
+;; author: Brad Settlemyer
+;; tested on: XEmacs 20.7
+;;            XEmacs 21.1.14
+;;            XEmacs 21.4.4
+;;            XEmacs 21.4.6
+;;            GNU Emacs  20.4
+;;            GNU Emacs  21.2
+;;
+; packages supported:
+;;   time, cl, cc-mode, font-lock, ede, eieio, elib, jde, func-menu,
+;;   html-mode, semantic, speedbar, workshop, xml-mode
+;;
+;; last mod: 2009-06-22
+;;;;---------------------------------------------------------------------------
+
+;; General setup
+(setq inhibit-splash-screen t)
+(setq transient-mark-mode t)
+(setq-default indent-tabs-mode nil)
+(setq delete-key-deletes-forward t)
+(setq mouse-yank-at-point t)
+(setq-default show-trailing-whitespace t)
+(line-number-mode t)
+(column-number-mode t)
+(global-linum-mode t)
+(global-font-lock-mode 1)
+
+(setq linum-format "%4d \u2502")
+;(speedbar 1)
+
+;; Delete trailing whitespace on save
+;;(add-hook 'before-save-hook 'delete-trailing-whitespace)
+
+;; Setup save options (auto and backup) -- still buggy need new Replace func
+(setq auto-save-timeout 2000)
+(setq make-backup-files t)
+
+;; Printing setup
+(setq ps-n-up-printing 2)
+(setq ps-print-header nil)
+
+;; Isearch keymap bindings
+(define-key isearch-mode-map [backspace] 'isearch-delete-char)
+
+;; Setup time mode
+(autoload 'display-time "time" "Display Time" t)
+(condition-case err
+    (display-time)
+  (error (message "Unable to load Time package.")))
+(setq display-time-24hr-format nil)
+(setq display-time-day-and-date t)
+
+;; Setup text mode
+(add-hook 'text-mode-hook '(lambda() (auto-fill-mode 1)))
+(add-hook 'text-mode-hook '(lambda() (setq fill-column 78)))
+
+;; Setup cscope
+(load-file "/usr/share/emacs/site-lisp/xcscope.el")
+(require 'xcscope)
+
+;; Setup Common Lisp mode
+(condition-case err
+    (require 'cl)
+  (error (message "Unable to load Common Lisp package.")))
+
+
+;; Setup C mode
+(autoload 'c++-mode  "cc-mode" "C++ Editing Mode" t)
+(autoload 'c-mode    "cc-mode" "C Editing Mode" t)
+(autoload 'c-mode-common-hook "cc-mode" "C Mode Hooks" t)
+(autoload 'c-add-style "cc-mode" "Add coding style" t)
+
+;; Associate extensions with modes
+(add-to-list 'auto-mode-alist '("\\.h$" . c++-mode))
+
+;; Create my own coding style
+;; No space before { and function sig indents 4 if argument overflow
+(setq bws-c-style
+      '((c-auto-newline                 . nil)
+        (c-basic-offset                 . 2)
+        (c-comment-only-line-offset     . 0)
+        (c-echo-syntactic-information-p . nil)
+        (c-hungry-delete-key            . t)
+        (c-tab-always-indent            . t)
+        (c-toggle-hungry-state          . t)
+        (c-hanging-braces-alist         . ((substatement-open after)
+                                          (brace-list-open)))
+        (c-offsets-alist                . ((arglist-close . c-lineup-arglist)
+                                           (case-label . 2)
+                                           (substatement-open . 2)
+                                           (block-open . 0) ; no space before {
+                                           (inline-open . 0) ; spaces after inline class method
+                                           (inher-cont . c-lineup-multi-inher)
+                                           (topmost-intro . 0)
+;                                           (arglist-cont-nonempty . +)
+                                           (inher-intro 0)
+                                           (template-args-cont . +)
+                                           (access-label -2)
+                                           (innamespace . -)
+                                           (knr-argdecl-intro . -)))
+        (c-hanging-colons-alist         . ((member-init-intro before)
+                                           (inher-intro)
+                                           (case-label after)
+                                           (label after)
+                                           (access-label after)))
+        (c-cleanup-list                 . (scope-operator
+                                           empty-defun-braces
+                                           defun-close-semi))))
+;; Construct a hook to be called when entering C mode
+(defun lconfig-c-mode ()
+  (progn (define-key c-mode-base-map "\C-m" 'newline-and-indent)
+         (c-add-style "Brad's Coding Style" bws-c-style t)))
+(add-hook 'c-mode-common-hook 'lconfig-c-mode)
+
+;; Setup font-lock syntax coloring package
+(autoload 'cpp-font-lock "cpp-mode" "CPP Font Lock mode" t)
+(autoload 'font-lock-fontify-buffer "font-lock" "Fontify Buffer" t)
+(condition-case err
+    (progn (add-hook 'c-mode-common-hook 'font-lock-fontify-buffer)
+           (add-hook 'emacs-lisp-mode-hook 'font-lock-fontify-buffer)
+           (global-font-lock t))
+  (error (progn
+           (message "Could not customize colors, disabling colored fonts.")
+           (setq-default font-lock-auto-fontify t))))
+(setq-default c-electric-flag nil)
+
+;; Setup Assembler mode
+(defun lconfig-asm-mode-hook ()
+  (progn (setq comment-column 36)
+         (setq tab-stop-list '(4 8 12 16 20 24 28 36 40 44 48))))
+(add-hook 'asm-mode-hook 'lconfig-asm-mode-hook)
+(add-to-list 'auto-mode-alist '("\\.s$" . asm-mode))
+(add-to-list 'auto-mode-alist '("\\.asm$" . asm-mode))
+
+;; Setup speedbar, an additional frame for viewing source files
+(autoload 'speedbar-frame-mode "speedbar" "Popup a speedbar frame" t)
+(autoload 'speedbar-get-focus "speedbar" "Jump to speedbar frame" t)
+(autoload 'speedbar-toggle-etags "speedbar" "Add argument to etags command" t)
+(setq speedbar-frame-plist '(minibuffer nil
+                             border-width 0
+                             internal-border-width 0
+                             menu-bar-lines 0
+                             modeline t
+                             name "SpeedBar"
+                             width 24
+                             unsplittable t))
+(condition-case err
+    (progn (speedbar-toggle-etags "-C"))
+  (error (message "Unable to load Speedbar package.")))
+
+;; Setup my own packages
+(add-to-list 'load-path (expand-file-name "~/site-lisp/"))
+
+;KEYBOARD SECTION
+;global keyb maps
+(global-set-key "\C-xg" 'goto-line)
+(global-set-key [home] 'beginning-of-line)
+(global-set-key [end] 'end-of-line)
+(global-set-key [\C-home] 'beginning-of-buffer)
+(global-set-key [\C-end] 'end-of-buffer)
+(global-set-key [\S-tab] 'indent-region)
+(global-set-key [?\C-/] 'void) ;forward reference
+(global-set-key [\C-backspace] 'backward-kill-word)
+(global-set-key "\C-s" 'isearch-forward-regexp)
+(global-set-key "\C-r" 'isearch-backward-regexp)
+(global-set-key "\C-\M-s" 'tags-search)
+(global-set-key "\C-x\C-n" 'find-file-other-frame) ;open new frame with a file
+(global-set-key "\C-x\C-c" 'intelligent-close) ;forward reference
+(global-set-key "\C-x55" 'split-window-fork) ;forward reference
+(global-set-key "\M-n" 'scroll-n-lines-ahead) ;forward reference
+(global-set-key "\M-p" 'scroll-n-lines-behind) ;forward reference
+(global-set-key "\M-u" 'void) ;don't bind upcase word
+(global-set-key "\M-l" 'void) ;don't bind downcase word
+(global-set-key "\C-c\C-c" 'comment-region) ;have to force it for some reason
+(global-set-key "\C-xw" 'what-line)
+(global-set-key [delete] 'delete-char)
+(global-set-key [backspace] 'delete-backward-char)
+(global-set-key [f1] 'yic-next-buffer) ;forward reference
+(global-set-key [f2] 'yic-prev-buffer) ;forward reference
+(global-set-key [f3] 'speedbar-get-focus)
+(global-set-key [f4] 'query-replace)
+(global-set-key [f5] 'query-replace-regexp)
+(global-set-key [f6] 'isearch-forward)
+(global-set-key [f7] 'isearch-backward)
+(global-set-key [f8] 'revert-buffer)
+(global-set-key [(ctrl f3)]  'cscope-set-initial-directory)
+(global-set-key [(ctrl f4)]  'cscope-unset-initial-directory)
+(global-set-key [(ctrl f5)]  'cscope-find-this-symbol)
+(global-set-key [(ctrl f6)]  'cscope-find-global-definition)
+(global-set-key [(ctrl f7)]  'cscope-find-global-definition-no-prompting)
+(global-set-key [(ctrl f8)]  'cscope-pop-mark)
+(global-set-key [(ctrl f9)]  'cscope-next-symbol)
+(global-set-key [(ctrl f10)] 'cscope-next-file)
+(global-set-key [(ctrl f11)] 'cscope-prev-symbol)
+(global-set-key [(ctrl f12)] 'cscope-prev-file)
+(global-set-key [(meta f9)]  'cscope-display-buffer)
+(global-set-key [(meta f10)] 'cscope-display-buffer-toggle)
+(global-set-key "\M-g" 'goto-line)
+(global-set-key "%" 'match-paren)
+
+;MISC SECTION
+
+;; When you scroll down with the cursor, emacs will move down the buffer one
+;; line at a time, instead of in larger amounts.
+(setq scroll-step 1)
+
+;syntax hilite
+;(setq font-lock-maximum-decoration t)
+;(custom-set-faces)
+
+;show paren, brace, and curly brace "partners" at all times
+(show-paren-mode t)
+
+;show column number in status bar
+(column-number-mode t)
+
+;show more info in taskbar/icon than just "Emacs"
+(setq-default frame-title-format (list "%65b %f"))
+(setq-default icon-title-format (list "%b"))
+
+;show time on status bar
+(display-time)
+
+;make the y or n suffice for a yes or no question
+(fset 'yes-or-no-p 'y-or-n-p)
+
+; don't automatically add new lines when scrolling down at the bottom
+; of a buffer
+(setq next-line-add-newlines nil)
+
+;be able to do Ctrl-X, u/l  to upper/lowercase regions without confirm
+(put 'downcase-region 'disabled nil)
+(put 'upcase-region 'disabled nil)
+
+;show ascii table
+(defun ascii-table ()
+  "Print the ascii table. Based on a defun by Alex Schroeder <asc@bsiag.com>"
+  (interactive)
+  (switch-to-buffer "*ASCII*")
+  (erase-buffer)
+  (insert (format "ASCII characters up to number %d.\n" 254))
+  (let ((i 0))
+    (while (< i 254)
+      (setq i (+ i 1))
+      (insert (format "%4d %c\n" i i))))
+  (beginning-of-buffer))
+
+;insert date into buffer
+(defun insert-date ()
+  "Insert date at point."
+  (interactive)
+  (insert (format-time-string "%a %b %e, %Y %l:%M %p")))
+
+;convert a buffer from dos ^M end of lines to unix end of lines
+(defun dos2unix ()
+  (interactive)
+    (goto-char (point-min))
+      (while (search-forward "\r" nil t) (replace-match "")))
+
+;vice versa
+(defun unix2dos ()
+  (interactive)
+    (goto-char (point-min))
+      (while (search-forward "\n" nil t) (replace-match "\r\n")))
+
+;;This method, when bound to C-x C-c, allows you to close an emacs frame the
+;;same way, whether it's the sole window you have open, or whether it's
+;;a "child" frame of a "parent" frame.  If you're like me, and use emacs in
+;;a windowing environment, you probably have lots of frames open at any given
+;;time.  Well, it's a pain to remember to do Ctrl-x 5 0 to dispose of a child
+;;frame, and to remember to do C-x C-x to close the main frame (and if you're
+;;not careful, doing so will take all the child frames away with it).  This
+;;is my solution to that: an intelligent close-frame operation that works in
+;;all cases (even in an emacs -nw session).
+(defun intelligent-close ()
+  "quit a frame the same way no matter what kind of frame you are on"
+  (interactive)
+  (if (eq (car (visible-frame-list)) (selected-frame))
+      ;;for parent/master frame...
+      (if (> (length (visible-frame-list)) 1)
+	  ;;close a parent with children present
+	  (delete-frame (selected-frame))
+	;;close a parent with no children present
+	(save-buffers-kill-emacs))
+    ;;close a child frame
+    (delete-frame (selected-frame))))
+
+;;a no-op function to bind to if you want to set a keystroke to null
+(defun void ()
+  "this is a no-op"
+  (interactive))
+
+;;compute the length of the marked region
+(defun region-length ()
+  "length of a region"
+  (interactive)
+  (message (format "%d" (- (region-end) (region-beginning)))))
+
+(defun split-window-fork ()
+  (concat
+   "spawns a new frame so that a 2-way split window in one frame becomes "
+   "2 top-level frames.  Has the same action as ")
+  (interactive)
+  (progn
+    (let ((current_window (selected-window))
+	  (other_window (next-window (selected-window)))
+	  (current_buffer (window-buffer (selected-window)))
+	  (other_buffer (window-buffer (next-window (selected-window)))))
+      (make-frame)
+      (select-window other_window)
+      (delete-other-windows))))
+
+;;the following snippet was copied from the Oreilly-published  book
+;;"Writing GNU Emacs Extensions" by Bob Glickstein.
+(defalias 'scroll-ahead 'scroll-up)
+(defalias 'scroll-behind 'scroll-down)
+(defun scroll-n-lines-ahead (&optional n)
+  "Scroll ahead N lines (1 by default)."
+  (interactive "P")
+  (progn
+    (scroll-ahead (prefix-numeric-value n))
+    (next-line 1)))
+
+(defun scroll-n-lines-behind (&optional n)
+  "Scroll behind N lines (1 by default)."
+  (interactive "P")
+  (progn
+    (scroll-behind (prefix-numeric-value n))
+    (previous-line 1)))
+
+(defun match-paren (arg)
+  "Go to the matching paren if on a paren; otherwise insert %."
+  (interactive "p")
+  (cond ((looking-at "\\s\(") (forward-list 1) (backward-char 1))
+        ((looking-at "\\s\)") (forward-char 1) (backward-list 1))
+        (t (self-insert-command (or arg 1)))))
+
+;;begin buffer-switching methods, which I bind to Ctrl-TAB and Ctrl-Shift-TAB
+;; ----------------------------------------------------------------------
+;;     Original yic-buffer.el
+;;     From: choo@cs.yale.edu (young-il choo)
+;;     Date: 7 Aug 90 23:39:19 GMT
+;;
+;;     Modified
+;; ----------------------------------------------------------------------
+
+(defun yic-ignore (str)
+  (or
+   ;;buffers I don't want to switch to
+   (string-match "\\*Buffer List\\*" str)
+   (string-match "^TAGS" str)
+   (string-match "^\\*Messages\\*$" str)
+   (string-match "^\\*Completions\\*$" str)
+   (string-match "^ " str)
+
+   ;;Test to see if the window is visible on an existing visible frame.
+   ;;Because I can always ALT-TAB to that visible frame, I never want to
+   ;;Ctrl-TAB to that buffer in the current frame.  That would cause
+   ;;a duplicate top-level buffer inside two frames.
+   (memq str
+	 (mapcar
+	  (lambda (x)
+	    (buffer-name
+	     (window-buffer
+	      (frame-selected-window x))))
+	  (visible-frame-list)))
+   ))
+
+(defun yic-next (ls)
+  "Switch to next buffer in ls skipping unwanted ones."
+  (let* ((ptr ls)
+	 bf bn go
+	 )
+    (while (and ptr (null go))
+      (setq bf (car ptr)  bn (buffer-name bf))
+      (if (null (yic-ignore bn))	;skip over
+	  (setq go bf)
+	(setq ptr (cdr ptr))
+	)
+      )
+    (if go
+	(switch-to-buffer go))))
+
+(defun yic-prev-buffer ()
+  "Switch to previous buffer in current window."
+  (interactive)
+  (yic-next (reverse (buffer-list))))
+
+(defun yic-next-buffer ()
+  "Switch to the other buffer (2nd in list-buffer) in current window."
+  (interactive)
+  (bury-buffer (current-buffer))
+  (yic-next (buffer-list)))
+;;end of yic buffer-switching methods
+
+
+;; Add final message so using C-h l I can see if .emacs failed
+(message ".emacs loaded successfully.")
+
+;;
+;; End of manual customization, begin EMACS customization
+;;
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(frame-background-mode (quote light))
+ '(load-home-init-file t t)
+ '(nil nil t))
+
+; customize this with list-faces display
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(cscope-file-face ((t (:foreground "yellow" :weight bold))))
+ '(cscope-function-face ((t (:foreground "color-202"))))
+ '(font-lock-builtin-face ((t (:foreground "SkyBlue" :weight bold))))
+ '(font-lock-comment-face ((((class color) (background dark)) (:foreground "LightPink")) (((class color)) (:foreground "red"))))
+ '(font-lock-constant-face ((nil (:foreground "DeepSkyBlue4" :weight bold))))
+ '(font-lock-doc-face ((t (:inherit font-lock-string-face :foreground "purple2"))))
+ '(font-lock-doc-string-face ((((class color) (background dark)) (:foreground "SpringGreen")) (((class color)) (:foreground "ForestGreen"))))
+ '(font-lock-function-name-face ((((class color)) (:foreground "green3"))))
+ '(font-lock-keyword-face ((t (:foreground "OrangeRed1" :weight bold))))
+ '(font-lock-negation-char-face ((t (:foreground "purple"))))
+ '(font-lock-preprocessor-face ((nil (:foreground "gray"))))
+ '(font-lock-reference-face ((((class color) (background dark)) (:foreground "SkyBlue")) (((class color)) (:foreground "DarkBlue"))))
+ '(font-lock-string-face ((((class color) (background dark)) (:foreground "SpringGreen")) (((class color)) (:foreground "ForestGreen"))))
+ '(font-lock-type-face ((nil (:foreground "turquoise1"))))
+ '(font-lock-variable-name-face ((((class color)) nil)))
+ '(font-lock-warning-face ((nil (:foreground "OrangeRed" :weight bold))))
+ '(font-lock-warning-name-face ((((class color) (background dark)) (:foreground "yellow1" :bold t)) (((class color)) (:foreground "HotPink" :bold t))))
+ '(link ((t (:foreground "green" :underline t))))
+ '(linum ((t (:background "gray20" :foreground "yellow"))))
+ '(minibuffer-prompt ((t (:foreground "yellow" :weight bold)))))
+
+
+
+
+(defun ooo-align-func (begin end)
+  "
+Align method or function declaration, where the arguments are spread across multiple lines.
+
+Example:
+
+void test( const this& aVar,
+          that& aVar,
+        those aVar,
+       const them& aVar );
+
+is aligned like that:
+
+void test( const this& aVar,
+           that&       aVar,
+           those       aVar,
+           const them& aVar );
+
+Works on the current region.
+"
+  (interactive "r")
+  ;; Works like this: second last argument of align-regexp selects
+  ;; third pair of bracket expression as the one to align. The prefix
+  ;; (either spaces or text followed by an open bracket) is just
+  ;; skipped.  After that, the first expression (expressions are
+  ;; separated by commas) aligns the type part, the second one the
+  ;; variable part.
+  (align-regexp "\\(.*(\\|\\s-+\\)\\(\\(const\\)*\\s-*\\S-+\\),\\(.*(\\|\\s-+\\)\\(\\w+\\s-*\\(\\,\\|)\\)\\s-*$\\)" begin end 1 ?  2 0))
+
+(defun ooo-align-var-decl (begin end)
+  "
+Align variables in a multiple-line declaration block.
+
+Example:
+
+ const this& aVar;
+     that& aVar;
+    those aVar;
+   const them& aVar;
+ theirs aVar(hello);
+   theirs aVar = hello;
+
+is aligned like that:
+
+ const this& aVar;
+ that&       aVar;
+ those       aVar;
+ const them& aVar;
+ theirs      aVar(hello);
+ theirs      aVar = hello;
+
+Works on the current region.
+"
+  (interactive "r")
+  (align-regexp "\\(const\\)*\\s-*\\S-+,\\w+\\s-*\\(;\\|\\s-*=.*;\\|\\s-*(.*)\\s-*;\\)\\s-*$" begin end 1))
+
+;speedbar intergration
+(require 'tramp)
+(require 'speedbar)
+(defconst my-speedbar-buffer-name "SPEEDBAR")
+(setq speedbar-buffer (get-buffer-create my-speedbar-buffer-name)
+speedbar-frame (selected-frame)
+dframe-attached-frame (selected-frame)
+speedbar-select-frame-method 'attached
+speedbar-verbosity-level 0
+speedbar-last-selected-file nil)
+(setq right-window (split-window-horizontally 30))
+(setq left-window (frame-first-window))
+(set-buffer speedbar-buffer)
+(speedbar-mode)
+(speedbar-reconfigure-keymaps)
+(speedbar-update-contents)
+(speedbar-set-timer 1)
+(set-window-buffer left-window "SPEEDBAR")
+(set-window-dedicated-p left-window t)
+(toggle-read-only) ; HACK, REQUIRED for Tramp to work ????
+(select-window right-window)
+(defun select-right-window () (select-window right-window))
+;(defun reset-window-config () (interactive)
+; (walk-windows (lambda (w) (when (not (or (eq w left-window) (eq w right-window))) (delete-window w))) "nominibuffer" t)
+; )p
+(defun reset-window-config () (interactive)
+(delete-other-windows)
+(setq right-window (split-window-horizontally 30))
+(setq left-window (frame-first-window))
+(set-window-buffer left-window speedbar-buffer)
+(set-window-dedicated-p left-window t)
+(select-window right-window)
+(set-window-dedicated-p right-window nil)
+(when (eq speedbar-buffer (window-buffer right-window)) (set-window-buffer right-window (next-buffer)))
+(set-window-dedicated-p right-window nil)
+)
+(global-set-key "\C-x1" 'reset-window-config)

@@ -1,0 +1,1 @@
+("~/code/mpich/" "~/code/tmp/intelmpich-mpich/" "~/tools/src/tmux-tmux-code/" "~/code/mpich/ssg_sfi-mpich/")
