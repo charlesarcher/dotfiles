@@ -27,6 +27,9 @@
 #-----------------------------------
 export MOSH_TITLE_NOPREFIX=1
 export EDITOR=emacs
+export LC_ALL=en_US.UTF-8
+export LANG=en_US.UTF-8
+export LANGUAGE=en_US.UTF-8
 
 #. /opt/intel/bin/compilervars.sh intel64
 
@@ -45,7 +48,6 @@ case $BUILD_ENV_NAME in
 	       alias cmvc='clear'
                . /project/ode/bin/ppssetup.ksh
            fi
-#           export PATH=/u/hxue/local/bin:/opt/freeware/bin:/tools/bin:/project/ode/bin:$PATH
            export PATH=/tools/bin:/project/ode/bin:$PATH
            ;;
   PDE_LINUX)
@@ -155,6 +157,11 @@ function _exit()	# function to run upon exit of shell
     echo -e "${RED}Hasta la vista, baby${NC}"
 }
 #trap _exit EXIT
+
+function mem()
+{
+    ps -eo rss,pid,euser,args:100 --sort %mem | grep -v grep | grep -i $@ | awk '{printf $1/1024 "MB"; $1=""; print }'
+}
 
 #---------------
 # Shell Prompt
@@ -294,17 +301,21 @@ eliteprompt     # This is the default prompt -- might be slow
 #-------------------
 # Personnal Aliases
 #-------------------
-
+alias h='cd ~/'
+alias c='cd /home/archerc/code/'
+alias s='cd /home/archerc/stage/'
+alias i='cd /home/archerc/code/install'
+alias j='jobs -l'
+alias r='rlogin'
 alias rm='rm -i'
 alias cp='cp -i'
 alias mv='mv -i'
+alias glist='for ref in $(git for-each-ref --sort=-committerdate --format="%(refname)" refs/heads/ refs/remotes ); do git log -n1 $ref --pretty=format:"%Cgreen%cr%Creset %C(yellow)%d%Creset %C(bold blue)<%an>%Creset%n" | cat ; done | awk '"'! a["'$0'"]++'"
 # -> Prevents accidentally clobbering files.
 alias mkdir='mkdir -p'
 alias xemacs='\emacs -f server-start -fg white -bg black'
-alias emacs='emacs -fg white -bg black -nw'
-alias h='history'
-alias j='jobs -l'
-alias r='rlogin'
+alias emacsserver='\emacs --daemon -q --load ~/.emacs.d/init.el -fg white -bg black'
+alias emacs='emacsclient -nw'
 alias which='type -all'
 alias ..='cd ..'
 alias path='echo -e ${PATH//:/\\n}'
@@ -316,6 +327,7 @@ alias background='xv -root -quit -max -rmode 5'
       # Put a picture in the background
 alias du='du -kh'
 alias df='df -kTh'
+alias rdm='rdm --daemon --data-dir /home/archerc/.cache/rtags'
 
 # The 'ls' family (this assumes you use the GNU ls)
 export OS_NAME=`uname`
@@ -332,7 +344,7 @@ case $OS_NAME in
     ;;
 esac
 
-export PATH=/home/cjarcher/tools/x86/bin:/home/cjarcher/code/install/gnu/bin:$PATH
+export PATH=/home/archerc/tools/x86/bin:/home/archerc/.nimble/bin/:/home/archerc/tools/x86/bin:/bin:$PATH
 
 alias la='ls -Al'               # show hidden files
 alias lx='ls -lXB'              # sort by extension
@@ -343,6 +355,7 @@ alias lr='ls -lR'               # recursive ls
 alias lt='ls -ltr'              # sort by date
 alias lm='ls -al |more'         # pipe through 'more'
 alias tree='tree -Csu'		# nice alternative to 'ls'
+alias cmake37='/net/binlib/tools/cmake-3.7.1-Linux-x86_64/bin/cmake'		# nice alternative to 'ls'
 
 # tailoring 'less'
 alias  more='less'
@@ -350,8 +363,7 @@ export PAGER=less
 export LESSCHARSET='latin1'
 export LESSOPEN='|/usr/bin/lesspipe.sh %s 2>&-'
        # Use this if lesspipe.sh exists.
-export LESS='-i -N -w  -z-4 -g -e -M -X -F -R -P%t?f%f \
-:stdin .?pb%pb\%:?lbLine %lb:?bbByte %bb:-...'
+export LESS='-i -w -z-4 -g -e -M -X -R -P%t?f%f :stdin .?pb%pb\%:?lbLine %lb:?bbByte %bb:-...'
 
 #----------------
 # a few fun ones
@@ -773,7 +785,29 @@ complete -o default -F _my_command nohup exec eval \
 trace truss strace sotruss gdb
 complete -o default -F _my_command command type which man nice
 
+. ~/.git-clang-format-completion
+
 # Local Variables:
 # mode:shell-script
 # sh-shell:bash
 # End:
+
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
+# >>> conda initialize >>>
+# !! Contents within this block are managed by 'conda init' !!
+__conda_setup="$('/home/archerc/miniconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/home/archerc/miniconda3/etc/profile.d/conda.sh" ]; then
+        . "/home/archerc/miniconda3/etc/profile.d/conda.sh"
+    else
+        export PATH="/home/archerc/miniconda3/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+# <<< conda initialize <<<
+
