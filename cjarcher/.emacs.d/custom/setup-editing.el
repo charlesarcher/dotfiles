@@ -41,6 +41,7 @@
 ;; GROUP: Editing -> Undo -> Undo Tree
 (require 'undo-tree)
 (global-undo-tree-mode)
+(setq undo-tree-history-directory-alist '(("." . "~/.emacs.d/undo")))
 
 
 
