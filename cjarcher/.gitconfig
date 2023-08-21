@@ -1,8 +1,8 @@
 [user]
-	email = charles.j.archer@intel.com
+	email = charlesarcher@gmail.com
 	name = Charles J Archer
-[http]
-        proxy = http://proxy.jf.intel.com:911
+#[http]
+#        proxy = http://proxy.jf.intel.com:911
 [color]
         diff = auto
         status = auto
@@ -21,14 +21,16 @@
     tool = meld
 [difftool]
     prompt = false
+
 [difftool "meld"]
     cmd = /home/cjarcher/tools/x86/bin/meld "$LOCAL" "$REMOTE"
 
 [merge]
     tool = meld
+
 [mergetool "meld"]
-#           cmd = /usr/bin/meld "$LOCAL" "$MERGED" "$REMOTE" --output "$MERGED"
-           cmd = /usr/bin/meld  "$LOCAL" "$BASE" "$REMOTE" --output "$MERGED"
+#    cmd = /usr/bin/meld "$LOCAL" "$MERGED" "$REMOTE" --output "$MERGED"
+    cmd = /usr/bin/meld  "$LOCAL" "$BASE" "$REMOTE" --output "$MERGED"
 
 [alias]
     graph = log --graph --decorate --abbrev-commit --pretty=oneline
@@ -45,5 +47,4 @@
     git reset --soft HEAD~ && \
     if [ 1 = $NEED_TO_STASH ] ; then git stash pop; fi ; \
   fi"
-[hub]
-	host = github.intel.com
+
