@@ -1,22 +1,18 @@
 ;;General setup
 (setq url-proxy-services '(("no_proxy" . "work\\.com")
                            ("http" . "proxy-chain.intel.com:911")))
-(require 'package) ;; You might already have this line
-(add-to-list 'package-archives
-             '("melpa" . "http://melpa.org/packages/"))
-(when (< emacs-major-version 24)
-  ;; For important compatibility libraries like cl-lib
-  (add-to-list 'package-archives '("gnu" . "http://elpa.gnu.org/packages/")))
-(package-initialize) ;; You might already have this line
+
+(require 'package)
+(add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
+;; Comment/uncomment this line to enable MELPA Stable if desired.  See `package-archive-priorities`
+;; and `package-pinned-packages`. Most users will not need or want to do this.
+;;(add-to-list 'package-archives '("melpa-stable" . "https://stable.melpa.org/packages/") t)
+(package-initialize)
 
 (setq gc-cons-threshold 100000000)
 (setq inhibit-startup-message t)
 (setq compilation-scroll-output t)
-(require 'linum)
-(global-linum-mode 1)
-(add-hook 'find-file-hook (lambda () (linum-mode 1)))
 (global-font-lock-mode 1)
-(setq linum-format "%4d \u2502")
 (column-number-mode 1)
 
 (defalias 'yes-or-no-p 'y-or-n-p)
@@ -39,6 +35,8 @@
     smartparens
     projectile
     volatile-highlights
+    sr-speedbar
+    solarized-theme
     undo-tree
     zygospore))
 
@@ -232,7 +230,7 @@
  gdb-show-main t
  )
 
-(load-theme 'solarized t)
+(load-theme 'solarized-dark t)
 
 (custom-set-variables
  ;; custom-set-variables was added by Custom.

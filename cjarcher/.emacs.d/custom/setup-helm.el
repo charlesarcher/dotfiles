@@ -1,4 +1,3 @@
-(require 'helm-config)
 (require 'helm-grep)
 
 ;; The default "C-x c" is quite close to "C-x C-c", which quits Emacs.
