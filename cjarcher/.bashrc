@@ -785,7 +785,7 @@ complete -o default -F _my_command nohup exec eval \
 trace truss strace sotruss gdb
 complete -o default -F _my_command command type which man nice
 
-. ~/.git-clang-format-completion
+# . ~/.git-clang-format-completion
 
 # Local Variables:
 # mode:shell-script
