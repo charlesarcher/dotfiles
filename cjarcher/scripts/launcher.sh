@@ -43,21 +43,54 @@ is_cpu_in_target() {
     (( (TARGET_MASK & (1 << cpu)) != 0 ))
 }
 
-force_migration() {
-    local pid="$1"
-    for tid in $(ps -T -o tid= --pid "$pid"); do
-        if [[ "$tid" != "$$" ]]; then
-            kill -SIGSTOP "$tid" 2>/dev/null && sleep 0.01 && kill -SIGCONT "$tid" 2>/dev/null
+stop_and_continue_thread() {
+    local tid=$1
+
+    if kill -SIGSTOP "$tid" 2>/dev/null; then
+        if ! kill -SIGCONT "$tid" 2>/dev/null; then
+            return 1
         fi
-    done
+    else
+        return 1
+    fi
 }
 
+force_migration() {
+    local tid="$1"
+    local pid="$2"
+    if is_pid_in_ppid_chain_or_self $pid; then
+        return
+    fi
+    #for tid in $(ps -T -o tid= --pid "$pid"); do
+    if ! stop_and_continue_thread $tid; then
+        return
+    fi
+    #done
+}
+
+# Function to check if a PID is in the current PPID chain
+is_pid_in_ppid_chain_or_self() {
+    local target_pid=$1
+    local current_pid=$BASHPID
+
+    if [ "$current_pid" -eq "$target_pid" ]; then
+        return 0
+    fi
+
+    while [ "$current_pid" -ne 1 ]; do
+        current_pid=$(ps -o ppid= -p "$current_pid" | tr -d ' ')
+        if [ "$current_pid" -eq "$target_pid" ]; then
+            return 0
+        fi
+    done
+    return 1
+}
 ############################
 # Main Logic
 ############################
 
 [ "$#" -ge 2 ] || {
-    echo "Usage: sudo $0 [--rescan] <target-cpu-list> <command> [<args>...]"
+    echo "Usage: $0 [--rescan] <target-cpu-list> <command> [<args>...]"
     exit 1
 }
 
@@ -97,16 +130,14 @@ migrate_tasks() {
 
     while read -r pid tid psr comm; do
         if affinity_line=$(taskset -p "$tid" 2>/dev/null); then
-            current_mask=$(echo "$affinity_line" | awk '{print $NF}')
-            [[ "$current_mask" != 0x* ]] && current_mask="0x$current_mask"
-            current_mask_num=$((current_mask))
+            original_mask="0x$(echo "$affinity_line" | awk '{print $NF}')"
+            original_mask_num=$((original_mask))
 
-            if (( current_mask_num & TARGET_MASK )); then
-                new_mask=$(( current_mask_num & ~TARGET_MASK ))
+            if (( original_mask_num & TARGET_MASK )); then
+                new_mask=$(( original_mask_num & ~TARGET_MASK ))
                 (( new_mask == 0 )) && new_mask=$FALLBACK_MASK
                 new_mask_hex=$(printf "0x%x" "$new_mask")
 
-                original_mask=$(taskset -p "$tid" | awk '{print $NF}')
                 [[ "$original_mask" != 0x* ]] && original_mask="0x$original_mask"
 
                 err_msg=""
@@ -124,7 +155,7 @@ migrate_tasks() {
                 else
                     current_psr=$(ps -o psr= -p "$tid" | tr -d ' ' || echo "")
                     if [[ -n "$current_psr" ]] && is_cpu_in_target "$current_psr"; then
-                        force_migration "$pid"
+                        force_migration "$tid" "$pid"
                         new_psr=$(ps -o psr= -p "$tid" | tr -d ' ')
                         forced="(forced from CPU $current_psr→$new_psr)"
                     fi
@@ -133,17 +164,25 @@ migrate_tasks() {
                 MIGRATION_ENTRIES+=("${psr}|${tid}|${comm}|${original_mask}|${new_mask_hex}|${actual_mask}|${status}|${forced}")
             fi
         fi
-    done < <(ps -eLo pid,lwp,psr,comm=)
+    done < <(ps -eLo pid=,lwp=,psr=,comm=)
 }
+
+if $RESCAN_MODE; then
+    echo "Rescan mode"
+    ps -eLo pid=,lwp=,psr=,comm= | while read -r pid tid psr comm; do
+        force_migration "$tid" "$pid"
+    done
+    echo "Done"
+    exit 0
+fi
+
 
 migrate_tasks "Initial Migration"
 
-if $RESCAN_MODE; then
-    migrate_tasks "Rescan Migration"
-fi
+
 
 echo -e "\nMigration Verification Report:"
-printf "%s\n" "$(printf -- '-%.0s' {1..130})"
+#printf "%s\n" "$(printf -- '-%.0s' {1..130})"
 current_cpu="-1"
 IFS=$'\n' SORTED_ENTRIES=($(printf "%s\n" "${MIGRATION_ENTRIES[@]}" | sort -t'|' -n -k1,1 -k2,2))
 for entry in "${SORTED_ENTRIES[@]}"; do
@@ -151,7 +190,7 @@ for entry in "${SORTED_ENTRIES[@]}"; do
     if [[ "$psr" != "$current_cpu" ]]; then
         [[ "$current_cpu" != "-1" ]] && echo ""
         printf "%s\n" "$(printf -- '-%.0s' {1..130})"
-        echo " CPU ${psr}:"
+        echo "CPU ${psr}:"
         printf "%s\n" "$(printf -- '-%.0s' {1..130})"
         current_cpu="$psr"
     fi
