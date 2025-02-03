@@ -132,23 +132,22 @@ migrate_tasks() {
         if affinity_line=$(taskset -p "$tid" 2>/dev/null); then
             original_mask="0x$(echo "$affinity_line" | awk '{print $NF}')"
             original_mask_num=$((original_mask))
+            new_mask=$(( original_mask_num & ~TARGET_MASK ))
+            (( new_mask == 0 )) && new_mask=$FALLBACK_MASK
+            new_mask_hex=$(printf "0x%x" "$new_mask")
 
+            [[ "$original_mask" != 0x* ]] && original_mask="0x$original_mask"
+
+            err_msg=""
+            if ! taskset -p "$new_mask_hex" "$tid" >/dev/null 2>&1; then
+                err_msg="Invalid argument"
+            fi
+
+
+            status=""
+            forced=""
             if (( original_mask_num & TARGET_MASK )); then
-                new_mask=$(( original_mask_num & ~TARGET_MASK ))
-                (( new_mask == 0 )) && new_mask=$FALLBACK_MASK
-                new_mask_hex=$(printf "0x%x" "$new_mask")
 
-                [[ "$original_mask" != 0x* ]] && original_mask="0x$original_mask"
-
-                err_msg=""
-                if ! taskset -p "$new_mask_hex" "$tid" >/dev/null 2>&1; then
-                    err_msg="Invalid argument"
-                fi
-
-                actual_mask=$(taskset -p "$tid" 2>/dev/null | awk '{print $NF}' || echo "$original_mask")
-                [[ "$actual_mask" != 0x* ]] && actual_mask="0x$actual_mask"
-
-                status="\e[32mYes\e[0m"
                 forced=""
                 if [[ -n "$err_msg" ]]; then
                     status="\e[31mNo ($err_msg)\e[0m"
@@ -160,9 +159,17 @@ migrate_tasks() {
                         forced="(forced from CPU $current_psr→$new_psr)"
                     fi
                 fi
-
-                MIGRATION_ENTRIES+=("${psr}|${tid}|${comm}|${original_mask}|${new_mask_hex}|${actual_mask}|${status}|${forced}")
             fi
+            actual_mask=$(taskset -p "$tid" 2>/dev/null | awk '{print $NF}' || echo "UNKNOWN_MASK")
+            [[ "$actual_mask" != 0x* ]] && actual_mask="0x$actual_mask"
+            if [[ "$new_mask_hex" == "$actual_mask" ]]; then
+                if [[ "$forced" == "" ]]; then
+                    status="\e[32mYes\e[0m"
+                else
+                    status="\e[32mForced\e[0m"
+                fi
+            fi
+            MIGRATION_ENTRIES+=("${psr}|${tid}|${comm}|${original_mask}|${new_mask_hex}|${actual_mask}|${status}|${forced}")
         fi
     done < <(ps -eLo pid=,lwp=,psr=,comm=)
 }
