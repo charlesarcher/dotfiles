@@ -6,7 +6,7 @@
 set -euo pipefail
 
 WIKI_AUX="${WIKI_AUX:-$HOME/wiki/aux/hermes}"
-HERMES="$HOME/.hermes"
+HERMES="${HERMES:-$HOME/.hermes}"
 MEM="$HERMES/memories"
 SKILLS="$HERMES/skills"
 
