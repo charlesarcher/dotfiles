@@ -1,0 +1,14 @@
+[Unit]
+Description=LLM Wiki auto-commit and push to GitHub
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Optional: only vader/HTTPS remotes need the token. Missing file is not an error.
+EnvironmentFile=-%h/.config/wikisync.env
+WorkingDirectory=%h/wiki
+# 1. Pull down script/env fixes made on other machines, then 2. sync the wiki.
+# `-` prefix: a sync hiccup must never block the wiki push.
+ExecStart=-%h/.local/bin/hermes-sync --quiet
+ExecStart=%h/.local/bin/wiki-autopush
