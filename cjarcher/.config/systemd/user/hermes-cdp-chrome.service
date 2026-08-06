@@ -1,0 +1,19 @@
+[Unit]
+Description=Persistent Chrome with remote debugging for Hermes browser-cdp
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/chromium \
+  --headless=new \
+  --no-sandbox \
+  --disable-gpu \
+  --disable-dev-shm-usage \
+  --remote-debugging-port=9222 \
+  --user-data-dir=%h/.cache/hermes-cdp-chrome \
+  about:blank
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=default.target
