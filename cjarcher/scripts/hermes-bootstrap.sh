@@ -39,4 +39,15 @@ if [ -f "$SRC_CFG" ] && [ ! -f "$HERMES/config.yaml" ]; then
   echo "copied config.yaml (merge secrets manually if needed)"
 fi
 
+# SOUL.md (machine-agnostic twin identity; same on every box) -> symlink
+SRC_SOUL="$WIKI_AUX/SOUL.md"
+if [ -f "$SRC_SOUL" ]; then
+  # back up any pre-existing local SOUL.md (e.g. default boilerplate) before linking
+  [ -f "$HERMES/SOUL.md" ] && [ ! -L "$HERMES/SOUL.md" ] && mv "$HERMES/SOUL.md" "$HERMES/SOUL.md.local.bak.$(date +%s)"
+  ln -sfn "$SRC_SOUL" "$HERMES/SOUL.md"
+  echo "linked SOUL.md -> $SRC_SOUL (digital-twin identity; see wiki cli-digital-twin)"
+else
+  echo "warn: $SRC_SOUL not found (clone llm-wiki first)" >&2
+fi
+
 echo "Hermes bootstrap done. Re-auth Hermes locally (gh / provider token)."
