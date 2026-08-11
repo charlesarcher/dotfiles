@@ -2,3 +2,6 @@
 # Python bytecode
 __pycache__/
 *.pyc
+
+# Agent/session artifacts (never commit these)
+.aider*
